@@ -1,0 +1,28 @@
+# Git
+.git
+.gitignore
+
+# IDEs
+.idea
+.vscode
+
+# Maven
+target/
+
+# Logs
+logs/
+*.log
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db
+
+# Variáveis de ambiente
+.env
+
+# Docker
+docker-compose.override.yml
+
+# Documentação
+README.md
+LICENSE
