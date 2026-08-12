@@ -3,6 +3,7 @@ package com.nicolas.app_academy.controllers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,6 +17,11 @@ import com.nicolas.app_academy.services.ILoginService;
 @RequestMapping("/auth")
 @CrossOrigin({ "*" })
 public class AuthController {
+
+  @GetMapping("/version")
+  public ResponseEntity<String> version() {
+    return ResponseEntity.ok("CI/CD funcionando");
+  }
 
   @Autowired
   private ILoginService<String> loginService;
