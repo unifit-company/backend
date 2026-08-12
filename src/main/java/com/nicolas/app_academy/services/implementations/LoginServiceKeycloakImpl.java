@@ -132,13 +132,73 @@ public class LoginServiceKeycloakImpl implements ILoginService<String> {
     HttpEntity<Map<String, Object>> request = new HttpEntity<>(user, headers);
 
     try {
-      ResponseEntity<String> response = httpComponent.restTemplate().postForEntity(createUserUrl, request,
-          String.class);
+      ResponseEntity<String> response = httpComponent.restTemplate().postForEntity(createUserUrl, request, String.class);
 
-      return ResponseEntity.ok(response.getBody());
+      //A Admin API do Keycloak responde 201 Ceated com o corpo vazio ao criar um usuario. O ID do usuario recem-criado vem no
+      //header "Location", nao no corpo da resposta. Extrai esse ID aqui para poder atribuir a role "Unifit" a ele em seguida
+      String location = response.getHeaders().getLocation() != null
+              ? response.getHeaders().getLocation().toString() : null;
+
+      //Se nao veio o header Location, nao tem como saber o ID do usuario criado
+      if(location == null){
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Usuário criado, mas não foi possível obter o ID para atribuir a role!");
+      }
+
+      //O header Location tem o formato: .../users/{userId}, pego o ultimo trecho
+      String[] locationParts = location.split("/");
+      String newUserId = locationParts[locationParts.length - 1];
+
+      //Usuarios criados via cadastro precisam da role "Unifit" para conseguir logar depois. Antes, essa role so era atribuida
+      //manualmente pelo admin no painel do Keycloak. Agora, é atribuida automaticamente nessa parte
+      assignUnifitRole(newUserId, accessToken);
+
+      //Como o corpo da criacao vem vazio, devolvo uma mensagem propria para o frontend, em vez de "response.getBody()" que
+      //ficaria nulo e vazia o frontend tratar como falha silenciosa, sem toast nem redirecionamento
+      Map<String, String> body = new HashMap<>();
+      body.put("message", "Usuário criado com sucesso!");
+      return ResponseEntity.ok(new ObjectMapper().writeValueAsString(body));
+
+      //Correcao temporaria: e.getMessage so mostra o status generico (403), sem o corpo da resposta do Keycloak,
+      //que geralmente contem o motivo real do erro
     } catch (HttpClientErrorException e) {
-      return ResponseEntity.status(e.getStatusCode()).body(e.getMessage());
+      return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBodyAsString());
+    } catch (JsonProcessingException e){
+      //Necessario capturar pois mapper.writeValueAsString() acima pode lancar esse erro
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao montar resposta de sucesso: " + e.getMessage());
     }
+  }
+
+  //Novo metodo: Busca o ID interno da role "Unifit" no realm e atribui ao usuario recem-criado.
+  //Pois o Keycloak exige o ID interno da role (nao so o nome) para fazer a atribuicao via admin API
+  private void assignUnifitRole(String userId, String accessToken){
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("Authorization", "Bearer " + accessToken);
+    headers.setContentType(MediaType.APPLICATION_JSON);
+
+    //Busca os dados da role "Unifit" (incluindo o ID interno dela)
+    String getRoleUrl = baseUrl + "/admin/realms/" + realm + "/roles/Unifit";
+    HttpEntity<Void> getRoleRequest = new HttpEntity<>(headers);
+    ResponseEntity<String> roleResponse = httpComponent.restTemplate().exchange(getRoleUrl, HttpMethod.GET, getRoleRequest, String.class);
+
+    Map<String, Object> roleData;
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      roleData = mapper.readValue(roleResponse.getBody(), Map.class);
+    } catch (JsonProcessingException e){
+      throw new RuntimeException("Erro ao processar dados da role Unifit: " + e.getMessage());
+    }
+
+    //Monta o corpo esperado pelo Keycloak para atribuir a role: uma lista contendo um objeto com o id e name da role
+    Map<String, Object> roleToAssign = new HashMap<>();
+    roleToAssign.put("id", roleData.get("id"));
+    roleToAssign.put("name", roleData.get("name"));
+
+    String assignRoleUrl = baseUrl + "/admin/realms/" + realm + "/users/" + userId + "/role-mappings/realm";
+    HttpEntity<List<Map<String, Object>>> assignRequest = new HttpEntity<>(Arrays.asList(roleToAssign), headers);
+
+    //Atribui a role ao usuario
+    httpComponent.restTemplate().postForEntity(assignRoleUrl, assignRequest, String.class);
   }
 
   private String getKeycloakAccessToken() {
