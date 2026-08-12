@@ -1,0 +1,71 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: db
+    environment:
+      MYSQL_DATABASE: app_academy
+      MYSQL_ROOT_PASSWORD: 12345678a.
+    ports:
+      - "3306:3306"
+    networks:
+      - unifit
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2.3
+    container_name: keycloak
+    command: start-dev
+    environment:
+      KC_DB: mysql
+      KC_DB_URL: jdbc:mysql://db:3306/app_academy
+      KC_DB_USERNAME: root
+      KC_DB_PASSWORD: 12345678a.
+
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+
+    ports:
+      - "8080:8080"
+
+    depends_on:
+      - db
+
+    networks:
+      - unifit
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: backend
+
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: app_academy
+      DB_USER: root
+      DB_PASSWORD: 12345678a.
+
+      KC_CLIENT_ID: ${KC_CLIENT_ID}
+      KC_CLIENT_SECRET: ${KC_CLIENT_SECRET}
+      KC_REALM: ${KC_REALM}
+
+      KC_ISSUER_URI: ${KC_ISSUER_URI}
+      KC_AUTH_SERVER_URL: ${KC_AUTH_SERVER_URL}
+      BASE_URL: ${BASE_URL}
+
+    ports:
+      - "8081:8081"
+
+    depends_on:
+      - keycloak
+      - db
+
+    networks:
+      - unifit
+
+networks:
+  unifit:
+    driver: bridge

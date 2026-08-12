@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import com.nicolas.app_academy.repositories.TrainingPlansRepository;
 import com.nicolas.app_academy.repositories.UserRepository;
 import com.nicolas.app_academy.services.exception.ResourceNotFoundException;
+import com.nicolas.app_academy.services.implementations.LoginServiceKeycloakImpl;
 import com.nicolas.app_academy.utils.JwtUserUtils;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -27,6 +28,9 @@ public class UserService {
 
     @Autowired
     private JwtUserUtils utils;
+
+    @Autowired
+    private LoginServiceKeycloakImpl keycloakImpl;
 
     public UserDTO criarUser(UserDTO userDTO) {
         User user = new User();
@@ -82,6 +86,9 @@ public class UserService {
     public void deletarUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Usuario nao encontrado"));
+
+        keycloakImpl.deleteUserKeycloak(
+                user.getUserIdentifier());
         userRepository.delete(user);
     }
 }

@@ -160,4 +160,36 @@ public class LoginServiceKeycloakImpl implements ILoginService<String> {
       throw new RuntimeException("Failed to authenticate with Keycloak", e);
     }
   }
+
+  public void deleteUserKeycloak(String keycloakId) {
+
+    String accessToken = getKeycloakAccessToken();
+
+    String url = baseUrl +
+        "/admin/realms/" +
+        realm +
+        "/users/" +
+        keycloakId;
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(accessToken);
+
+    HttpEntity<Void> request = new HttpEntity<>(headers);
+
+    try {
+
+      httpComponent.restTemplate()
+          .exchange(
+              url,
+              HttpMethod.DELETE,
+              request,
+              Void.class);
+
+    } catch (HttpClientErrorException e) {
+
+      throw new RuntimeException(
+          "Erro ao deletar usuário no Keycloak",
+          e);
+    }
+  }
 }

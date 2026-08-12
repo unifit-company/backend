@@ -1,0 +1,38 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: db
+    environment:
+      MYSQL_DATABASE: app_academy
+      MYSQL_ROOT_PASSWORD: 12345678a.
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - keycloak-network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2.3
+    container_name: keycloak
+    command: start-dev
+    environment:
+      KC_DB: mysql
+      KC_DB_URL: jdbc:mysql://db:3306/app_academy
+      KC_DB_USERNAME: root
+      KC_DB_PASSWORD: 12345678a.
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    networks:
+      - keycloak-network
+
+volumes:
+  db_data:
+
+networks:
+  keycloak-network:
+    driver: bridge
