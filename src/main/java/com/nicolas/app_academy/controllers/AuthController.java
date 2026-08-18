@@ -22,6 +22,7 @@ public class AuthController {
 
   @PostMapping("/login")
   public ResponseEntity<String> logar(@RequestBody Login login) {
+    System.out.println("Teste Backend!");
     return loginService.login(login);
   }
 
